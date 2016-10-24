@@ -1,6 +1,8 @@
 # - *- coding: utf- 8 - *-
 import twitter
 import flickr_api
+import random
+import networkx as nx
 from flickr_api.api import flickr
 import sys, requests, json
 
@@ -139,6 +141,73 @@ def getLocalTrendingTopics():
     for topic in trending_topics:
         print topic.name
 
+def getShortestNetwork():
+    
+    tw_file = file('twitter_combined.txt')
+    id_found = False
+    
+    users = set()
+
+    for line in tw_file:
+        line_array = line.split()
+        
+        for Id in line_array:
+            users.add(Id)
+            
+        if str(foundUser.id) in line:
+            id_found = True
+    
+    if not id_found:
+        print "El id de usuario no fue encontrado en la muestra. Elige otro."
+        return
+    
+    users = list(users)
+    query = True
+    
+    while query:
+        random_id = random.choice(users)
+        
+        user = api.GetUser(user_id = random_id).screen_name
+        
+        print "Elige otro usuario al cual quieres llegar (sugerencia: @{})".format(user)
+        target_user = raw_input()
+        if target_user and not target_user.startswith('@'):
+            target_user = '@' + target_user
+        
+        try:
+            secondUser = api.GetUser(screen_name = target_user)
+            print '\n'
+        except:
+            print "El usuario {} no fue encontrado, vuelve a intentar.".format(target_user)
+    
+        if str(secondUser.id) in users:
+            query = False
+        else:
+            print "El usuario {} no esta en nuestra base de datos, vuelve a intentar.".format(target_user)
+    
+    print "Calculando camino mas corto..."
+    
+    G = nx.read_edgelist("twitter_combined.txt", nodetype = int)
+    nodes = G.nodes()
+    
+    shortest_path = nx.shortest_path(
+        G, 
+        source=nodes[nodes.index(foundUser.id)], 
+        target=nodes[nodes.index(secondUser.id)])
+        
+    print "Consiguiendo el nombre de los usuarios..."
+    
+    names_shortest_path = list()
+    for Id in shortest_path:
+        user = api.GetUser(user_id = Id).screen_name
+        names_shortest_path.append(user)
+        
+    print "El camino mas corto del usuario @{} a @{} es: ".format(foundUser.screen_name, secondUser.screen_name)
+    print '\n'
+        
+    for name in names_shortest_path:
+        print "@{}".format(name)
+
                 
             
 ##############################
@@ -155,6 +224,7 @@ while True:
     print '3.- Busqueda por palabra'
     print '4.- Ver los trending topics globales'
     print '5.- Ver los trending topics cercanos'
+    print '6.- NUEVO! Ver red mas cercana entre un usuario y otro'
     print '0.- Salir'
     while True:
         try:
@@ -178,6 +248,8 @@ while True:
         getTrendingTopics()
     elif( option == 5):
         getLocalTrendingTopics()
+    elif(option == 6):
+        getShortestNetwork()
     elif( option == 0 ):
         print 'Hasta luego!'
         sys.exit()
